@@ -51,9 +51,13 @@ The ecosystem enables experiments, AI training, and inference to coexist across 
 
 ### 🧪 Research & Experiment Layer
 
-| Repo                        | Description                                                                                                                                                                         | Link                                                                         |
-| --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
-| **`openfluke/NeuralArena`** | **Experiment harness and benchmark suite** for testing Paragon’s AI runtime. Contains Level-1→10 tasks (MNIST, CIFAR, NLP, RL, etc.), telemetry systems, and reproducibility tests. | [github.com/openfluke/NeuralArena](https://github.com/openfluke/NeuralArena) |
+| Repo                        | Description                                                                                                                                                                                                    | Link                                                                                                                                                                        |
+| --------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **`openfluke/NeuralArena`** | **Experiment harness and benchmark suite** for testing Paragon’s AI runtime. Contains Level-1→10 tasks (MNIST, CIFAR, NLP, RL, etc.), telemetry systems, and reproducibility tests.                            | [github.com/openfluke/NeuralArena](https://github.com/openfluke/NeuralArena)                                                                                                |
+| **`openfluke/iso-demo`**    | **Cross-Device Inference Telemetry Harness** — tests Paragon’s reproducibility across **Intel, AMD, NVIDIA, and Apple GPUs** using CPU vs GPU drift benchmarks. Generates detailed telemetry reports and PDFs. | [github.com/openfluke/iso-demo](https://github.com/openfluke/iso-demo) <br> 📄 [Telemetry Report v0.1.0 Release](https://github.com/openfluke/iso-demo/releases/tag/v0.1.0) |
+
+> The telemetry system (`iso-demo`) collects and merges real-world performance and drift data across GPU vendors, verifying **bit-level determinism** of Paragon’s AI runtime.  
+> See [`telemetry_report_merged.pdf`](https://github.com/openfluke/iso-demo/releases/tag/v0.1.0) for a full multi-device analysis — the first open, vendor-comparison audit of GPU-agnostic AI inference.
 
 ---
 
@@ -67,12 +71,14 @@ graph TD
     Wrap[openfluke/wrap]
     Portal[openfluke/portal]
     NeuralArena[openfluke/NeuralArena]
+    IsoDemo[openfluke/iso-demo]
 
     Paragon --> Teleport
     Paragon --> Paracast
     Paragon --> Wrap
     Paragon --> Portal
     Paragon --> NeuralArena
+    Paragon --> IsoDemo
     Teleport --> Paracast
     Wrap --> Portal
 ```
@@ -81,13 +87,14 @@ graph TD
 
 ## 🧱 Layered Architecture
 
-| Layer           | Purpose                                                  | Technologies             |
-| --------------- | -------------------------------------------------------- | ------------------------ |
-| **1️⃣ Core**     | Neural network runtime, GPU kernels, AI model definition | Go, WebGPU, Vulkan       |
-| **2️⃣ ABI**      | Language-agnostic bridging (C, C#, Python)               | CGO, C ABI               |
-| **3️⃣ WASM**     | WebAssembly runtime for browser/JS                       | Go → wasm_exec.js        |
-| **4️⃣ Frontend** | npm distribution + web app integration                   | Vite, Bun, Ionic         |
-| **5️⃣ Research** | Datasets, benchmarks, drift validation                   | Python, Paragon bindings |
+| Layer            | Purpose                                                     | Technologies             |
+| ---------------- | ----------------------------------------------------------- | ------------------------ |
+| **1️⃣ Core**      | Neural network runtime, GPU kernels, AI model definition    | Go, WebGPU, Vulkan       |
+| **2️⃣ ABI**       | Language-agnostic bridging (C, C#, Python)                  | CGO, C ABI               |
+| **3️⃣ WASM**      | WebAssembly runtime for browser/JS                          | Go → wasm_exec.js        |
+| **4️⃣ Frontend**  | npm distribution + web app integration                      | Vite, Bun, Ionic         |
+| **5️⃣ Research**  | Datasets, benchmarks, drift validation                      | Python, Paragon bindings |
+| **6️⃣ Telemetry** | Cross-device reproducibility testing, vendor drift analysis | Go, JSON, Python reports |
 
 ---
 
@@ -98,6 +105,7 @@ graph TD
 - Deterministic neural network evaluation
 - No Python-only dependencies (pure Go GPU kernels)
 - Works both **headless (server)** and **interactive (browser)**
+- Real-world drift validation and reproducibility metrics via **iso-demo telemetry reports**
 
 ---
 
@@ -124,9 +132,16 @@ graph TD
 - 🧩 Docs: [github.com/openfluke/paragon_ecosystem](https://github.com/openfluke/paragon_ecosystem)
 - 🧱 PyPI (coming soon): `paragon-py`
 - 📦 npm: [`@openfluke/portal`](https://www.npmjs.com/package/@openfluke/portal)
+- 🧾 Telemetry Harness: [github.com/openfluke/iso-demo](https://github.com/openfluke/iso-demo)
+- 📑 [Telemetry Report v0.1.0](https://github.com/openfluke/iso-demo/releases/tag/v0.1.0)
 
 ---
 
 ### ⚡ License
 
 All projects under the **OpenFluke** ecosystem are released under the **Apache-2.0 License**.
+
+---
+
+> _“Build once. Run everywhere. Reproduce everything.”_
+> — Samuel Watson
