@@ -33,10 +33,11 @@ The ecosystem enables experiments, AI training, and inference to coexist across 
 
 ### ⚙️ Native Bridge Layer
 
-| Repo                     | Description                                                                                                                                       | Link                                                                   |
-| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- |
-| **`openfluke/teleport`** | **C ABI Bridge** — exposes Paragon’s internals as a C-compatible shared library (`.so`, `.dll`, `.dylib`) for cross-language integration.         | [github.com/openfluke/teleport](https://github.com/openfluke/teleport) |
-| **`openfluke/paracast`** | Early prototype of the ABI bridge system — connects Paragon to **C/C++/C#**, powering integration with engines like **Godot, Unity, and Unreal**. | [github.com/openfluke/paracast](https://github.com/openfluke/paracast) |
+| Repo                       | Description                                                                                                                                                                                                    | Link                                                                                                                                               |
+| -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **`openfluke/teleport`**   | **C ABI Bridge** — exposes Paragon’s internals as a C-compatible shared library (`.so`, `.dll`, `.dylib`) for cross-language integration.                                                                      | [github.com/openfluke/teleport](https://github.com/openfluke/teleport)                                                                             |
+| **`openfluke/paracast`**   | Early prototype of the ABI bridge system — connects Paragon to **C/C++/C#**, powering integration with engines like **Godot, Unity, and Unreal**.                                                              | [github.com/openfluke/paracast](https://github.com/openfluke/paracast)                                                                             |
+| **`openfluke/paragon-py`** | **Python bindings** for the Paragon runtime. Provides a pure-Python `ctypes` interface with prebuilt `.so/.dll/.dylib` binaries. Enables **train in Python → run in Go / WASM / C#** without model conversion. | [github.com/openfluke/paragon-py](https://github.com/openfluke/paragon-py) <br> [pypi.org/project/paragon-py](https://pypi.org/project/paragon-py) |
 
 ---
 
@@ -111,7 +112,8 @@ graph TD
 
 ## 📦 Future Additions
 
-- **`openfluke/paragon-py`** — Python package wrapping the native `.so` directly (`pip install paragon-py`)
+- **`openfluke/paragon-py`** — Official **Python binding** for Paragon (available on [PyPI](https://pypi.org/project/paragon-py/)).  
+  Allows researchers to train or evaluate models in Python and run them natively in Go, C, or WebGPU — identical outputs, zero conversions.
 - **`openfluke/gogoportal`** — Experimental Godot extension
 - **`openfluke/primecraft`** — Sandbox + UGC game layer for AI-driven physics and player-training data collection
 
