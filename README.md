@@ -149,6 +149,42 @@ graph TD
 - 🧾 Telemetry Harness: [github.com/openfluke/iso-demo](https://github.com/openfluke/iso-demo)
 - 📑 [Telemetry Report v0.1.0](https://github.com/openfluke/iso-demo/releases/tag/v0.1.0)
 
+## Pip i paragon-py
+
+```
+chmod +x setup.sh
+./setup.sh
+```
+
+```
+python3 -c 'exec("""\
+import paragon_py as paragon
+
+# Create a small 3-layer network: input → hidden → output
+# Each layer uses ReLU activation and is trainable.
+h = paragon.new_network(
+    shapes=[(4, 8), (8, 8), (8, 2)],     # width x height per layer
+    activations=["relu", "relu", "relu"],
+    trainable=[True, True, True],
+    use_gpu=True
+)
+
+# Initialize GPU backend (optional but faster)
+paragon.initialize_gpu(h)
+
+# Dummy forward pass
+sample_input = [[0.1, 0.5, 0.3, 0.7]]
+paragon.forward(h, sample_input)
+
+# Extract and print the output
+out = paragon.extract_output(h)
+print("Network output:", out)
+
+# Cleanup GPU resources
+paragon.cleanup_gpu(h)
+""")'
+```
+
 ---
 
 ### ⚡ License
