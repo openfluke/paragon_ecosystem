@@ -66,14 +66,25 @@ The ecosystem enables experiments, AI training, and inference to coexist across 
 
 ```mermaid
 graph TD
-    Paragon[openfluke/paragon]
-    Teleport[openfluke/teleport]
-    Paracast[openfluke/paracast]
-    Wrap[openfluke/wrap]
-    Portal[openfluke/portal]
-    NeuralArena[openfluke/NeuralArena]
-    IsoDemo[openfluke/iso-demo]
+    %% Core Layer
+    Paragon["🧠 openfluke/paragon<br><br>Core AI framework written in Go.<br>Implements GPU-agnostic neural networks via WebGPU/Vulkan/Metal/DX12.<br>Foundation for all modules."]
 
+    %% Native Bridge Layer
+    Teleport["🔗 openfluke/teleport<br><br>C ABI bridge for Paragon.<br>Compiles Go AI runtime into shared libraries (.so/.dll/.dylib).<br>Enables cross-language access from C/C++/Rust/Python."]
+    Paracast["🎮 openfluke/paracast<br><br>Prototype C/C# bindings layer.<br>Integrates Paragon with Godot/Unity/Unreal engines.<br>Used for GPU vs CPU benchmarking and RL demos."]
+
+    %% Web & WASM Layer
+    Wrap["🕸️ openfluke/wrap<br><br>WebAssembly wrapper for Paragon.<br>Generates JS bindings for browsers.<br>Supports multiple numeric types and JSON interop."]
+    Portal["🌐 openfluke/portal<br><br>npm package for Bun/Node/Vite/Ionic.<br>Loads Paragon WASM runtime (`initPortal`).<br>Provides identical API across backend and frontend."]
+
+    %% Experimental & Research Layer
+    NeuralArena["🔬 openfluke/NeuralArena<br><br>Experiment and benchmark suite.<br>Tests Paragon across datasets (MNIST → CIFAR → RL).<br>Validates deterministic reproducibility."]
+    IsoDemo["📊 openfluke/iso-demo<br><br>Telemetry harness for cross-device drift testing.<br>Benchmarks Paragon across Intel/AMD/NVIDIA/Apple GPUs.<br>Generates reproducibility and performance reports."]
+
+    %% Physics Integration Layer
+    Isocard["🌌 openfluke/isocard<br><br>Three.js + Jolt physics scene system.<br>Allows AI models to interact with JSON-driven 3D environments.<br>Supports both frontend and server simulations."]
+
+    %% Ecosystem relationships
     Paragon --> Teleport
     Paragon --> Paracast
     Paragon --> Wrap
@@ -82,6 +93,7 @@ graph TD
     Paragon --> IsoDemo
     Teleport --> Paracast
     Wrap --> Portal
+    Portal <--> Isocard
 ```
 
 ---
