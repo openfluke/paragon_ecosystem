@@ -1,0 +1,51 @@
+# === Python artifacts ===
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.egg-info/
+*.egg
+*.log
+*.tmp
+*.bak
+
+# === Virtual environments ===
+venv/
+.env/
+.venv/
+env/
+.paragon_cache/
+.paragon_data/
+
+# === Benchmarks & outputs ===
+bench_*.csv
+bench_py.csv
+bench_results/
+*.jsonl
+*.out
+*.dat
+
+# === Notebooks / Reports ===
+*.ipynb_checkpoints
+*.nbconvert.ipynb
+*.pdf
+*.rtf
+*.docx
+*.xlsx
+*.ods
+*.odp
+
+# === OS / IDE files ===
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.code-workspace
+
+# === Temp or local data ===
+tmp/
+cache/
+__cache__/
+artifacts/
+logs/
+results/
