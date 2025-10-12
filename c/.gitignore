@@ -1,0 +1,32 @@
+# Build artifacts
+bench
+bench.o
+paragon.o
+
+# Shared libraries (compiled targets)
+*.so
+*.dll
+*.dylib
+
+# Intermediate build and cache files
+*.out
+*.a
+*.o
+*.obj
+*.log
+*.tmp
+*.bak
+*.swp
+
+# Benchmark results
+bench.csv
+results.csv
+
+# System files
+.DS_Store
+Thumbs.db
+
+# Editor/IDE metadata
+.vscode/
+.idea/
+*.code-workspace

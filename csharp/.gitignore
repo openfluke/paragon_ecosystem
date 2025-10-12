@@ -1,0 +1,77 @@
+# ----------------------------
+# OS / editor clutter
+# ----------------------------
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*.tmp
+*.log
+
+# ----------------------------
+# Build artifacts
+# ----------------------------
+bin/
+obj/
+artifacts/
+TestResults/
+*.cache/
+*.lock.json
+*.user
+*.userosscache
+*.suo
+*.userprefs
+*.ncrunch*
+*.nuget.props
+*.nuget.targets
+
+# ----------------------------
+# IDEs
+# ----------------------------
+.vs/
+.idea/
+.vscode/
+
+# ----------------------------
+# NuGet
+# ----------------------------
+packages/
+*.nupkg
+*.snupkg
+
+# ----------------------------
+# Native interop builds
+# ----------------------------
+# Ignore local copies and debug binaries
+*.dll
+*.so
+*.dylib
+*.a
+*.lib
+*.exp
+*.pdb
+
+# But keep the released interop libs you actually ship:
+!ParagonBench/linux_amd64/teleport_*.so
+!ParagonBench/windows_amd64/teleport_*.dll
+!ParagonBench/darwin_amd64/teleport_*.dylib
+!ParagonBench/darwin_arm64/teleport_*.dylib
+!**/teleport.h
+!**/teleport_*.h
+
+# ----------------------------
+# Bench outputs / telemetry
+# ----------------------------
+bench.csv
+*.csv
+*.json
+*.jsonl
+*.txt
+
+# ----------------------------
+# Temporary / experimental folders
+# ----------------------------
+*/temp/
+*/tmp/
+*/_temp/
+*/_build/
