@@ -8,6 +8,47 @@ This repository documents all core components of the ecosystem, how they interco
 
 ---
 
+### 🧠 Capability Radar — Current Progress vs Target 2026
+
+![Paragon AI Capability Radar](paragon_ai_capability_radar_notitle.png)
+
+The chart above visualizes **Paragon’s current maturity** across its multi-domain AI competencies, benchmarked against the **2026 ecosystem targets**.
+
+| Capability Area             | 2025 Progress | 2026 Target | Description                                                                                                                   |
+| --------------------------- | ------------- | ----------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| **Vision**                  | 4 / 10        | 7 / 10      | Image, camera, and synthetic scene integration through physics-based rendering and differentiable perception models.          |
+| **Text / NLP**              | 4 / 10        | 6 / 10      | Foundation for symbolic reasoning, semantic parsing, and lightweight instruction models embedded into Go and WebGPU runtimes. |
+| **Tabular / Data**          | 5 / 10        | 6 / 10      | Deterministic numerical pipelines for CSV/JSON datasets with GPU-agnostic drift verification.                                 |
+| **Audio / Signal**          | 3 / 10        | 6 / 10      | Real-time audio embeddings and waveform inference planned for integration into `iso-demo` and `NeuralArena`.                  |
+| **Reinforcement Learning**  | 3 / 10        | 6 / 10      | Player-in-loop RL and agent replay coming through `Primecraft` scenes and the AI controller API.                              |
+| **Physics / Simulation**    | 4 / 10        | 6 / 10      | Expansion of Jolt + Three.js physics bridge with deterministic RL state recording across client/server.                       |
+| **Generative / Creativity** | 3 / 10        | 6 / 10      | Procedural world generation, prompt-driven material synthesis, and cross-modal model export to WASM planned.                  |
+| **Meta / Verification**     | 7 / 10        | 9 / 10      | Core focus: reproducibility harness, telemetry auditing, and Conformance Lab certifications across GPU vendors.               |
+
+---
+
+### 🧭 Next Steps
+
+**Short-term (2025-Q4 → 2026-Q1):**
+
+- Extend `NeuralArena` with multi-modal benchmark levels (Vision ↔ Text ↔ Physics).
+- Deploy **Conformance Lab Web Portal** to publish reproducibility scores across AMD/NVIDIA/Intel/Apple GPUs.
+- Integrate `paragon-py` training outputs directly into the Go and WebAssembly layers for fully closed-loop experiments.
+
+**Mid-term (2026):**
+
+- Add **reinforcement learning curriculum tasks** within `Primecraft` for user-driven AI training.
+- Launch **OpenFluke Academy**, certifying reproducible AI pipelines through community-submitted telemetry runs.
+- Merge all language bindings (`Go`, `C`, `C#`, `Python`, `WASM`) under unified Paragon schema and JSON interchange format.
+
+**Long-term:**
+
+- Reach full **cross-modal generative parity**, allowing text-to-scene, audio-to-motion, and visual physics reasoning.
+- Certify the OpenFluke stack under **ISO deterministic ML standards** (ISO/IEC 22989 & 23053).
+- Release “**Primecraft Core 1.0**” — a live, reproducible physics sandbox powered entirely by Paragon AI.
+
+---
+
 ## 🌐 Core Philosophy
 
 Paragon is built for **true portability**:
