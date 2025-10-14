@@ -171,8 +171,8 @@
         netPill = $("netPill"),
         wPill = $("wPill");
       const btnCreate = $("btnCreate"),
-        btnPerturb = $("btnPerturb");
-      const btnImport = $("btnImport"),
+        btnPerturb = $("btnPerturb"),
+        btnImport = $("btnImport"),
         modelUrl = $("modelUrl");
       const svc = $("svc"),
         logEl = $("log"),
@@ -187,13 +187,6 @@
       const log = (x) =>
         (logEl.textContent =
           typeof x === "string" ? x : JSON.stringify(x, null, 2));
-      const softmax = (xs) => {
-        const nums = xs.map(Number);
-        const m = Math.max(...nums);
-        const exps = nums.map((v) => Math.exp(v - m));
-        const s = exps.reduce((a, b) => a + b, 0) || 1;
-        return exps.map((e) => e / s);
-      };
       const argsJSON = (...a) => JSON.stringify(a);
 
       // WASM setup
@@ -224,6 +217,7 @@
             { Width: 256, Height: 1 },
             { Width: 10, Height: 1 },
           ]);
+          // Output layer already performs softmax inside the model
           const A = JSON.stringify(["linear", "relu", "softmax"]);
           const F = JSON.stringify([true, true, true]);
           net = NewNetworkFloat32(L, A, F);
@@ -270,6 +264,7 @@
         }
       };
 
+      // Read model output (expected to already be probabilities)
       function readOutput() {
         try {
           const raw = net.ExtractOutput ? net.ExtractOutput() : net.GetOutput();
@@ -280,12 +275,10 @@
             console.error("JSON parse error:", parseErr);
             out = [];
           }
-
-          // Flatten if output is nested like [[...]]
+          // Flatten [[...]] → [...]
           if (Array.isArray(out) && out.length === 1 && Array.isArray(out[0])) {
             out = out[0];
           }
-
           if (!Array.isArray(out) || out.length !== 10) {
             console.warn(
               "Output length not 10, got",
@@ -293,9 +286,14 @@
             );
             return new Array(10).fill(0);
           }
-
-          console.log("✅ Parsed output:", out);
-          return out.map((x) => Number(x) || 0);
+          // Clamp to sane [0,1] range without re-normalizing or softmaxing
+          return out.map((x) => {
+            const v = Number(x);
+            if (!Number.isFinite(v)) return 0;
+            if (v < 0) return 0;
+            if (v > 1) return 1;
+            return v;
+          });
         } catch (e) {
           console.error("Output read error:", e);
           return new Array(10).fill(0);
@@ -304,19 +302,19 @@
 
       function showResult(t0) {
         try {
-          const logits = readOutput();
-          const probs = softmax(logits);
+          const probs = readOutput(); // already softmaxed by the model
           const pred = probs.reduce(
             (iMax, x, i, arr) => (x > arr[iMax] ? i : iMax),
             0
           );
+          const confidence = Math.max(...probs);
           predEl.textContent = String(pred);
-          confEl.textContent = (Math.max(...probs) * 100).toFixed(2) + "%";
+          confEl.textContent = (confidence * 100).toFixed(2) + "%";
           latEl.textContent = (performance.now() - t0).toFixed(2) + " ms";
           log({
-            logits: logits.map((x) => +x.toFixed(6)),
             probs: probs.map((x) => +x.toFixed(6)),
             pred,
+            confidence: +confidence.toFixed(6),
             latency_ms: +(performance.now() - t0).toFixed(2),
           });
         } catch (e) {
@@ -330,7 +328,7 @@
         }
       }
 
-      // Run digit image from backend (process PNG to 28x28 2D)
+      // Run digit image from backend (process PNG to 28×28 2D)
       async function runDigit(d) {
         try {
           const url = `${svc.value.replace(/\/+$/, "")}/static/images/${d}.png`;
@@ -353,7 +351,7 @@
             const row = [];
             for (let x = 0; x < 28; x++) {
               const idx = (y * 28 + x) * 4;
-              const gray = data[idx] / 255.0;
+              const gray = data[idx] / 255.0; // R channel
               row.push(gray);
             }
             img2d.push(row);

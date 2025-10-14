@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Paragon MNIST — RAW ONLY (WASM)</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <script src="wasm_exec.js"></script>
+    <style>
+      :root {
+        color-scheme: dark;
+      }
+      body {
+        margin: 24px;
+        font: 14px/1.5 ui-monospace, Menlo, Consolas, monospace;
+        background: #0b0c0f;
+        color: #e6e7eb;
+      }
+      h1 {
+        margin: 0 0 14px;
+        font-size: 20px;
+      }
+      .card {
+        background: #151821;
+        border: 1px solid #222737;
+        border-radius: 10px;
+        padding: 14px;
+        max-width: 900px;
+        margin-bottom: 16px;
+      }
+      .row {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        flex-wrap: wrap;
+        margin: 10px 0;
+      }
+      input,
+      button {
+        font: inherit;
+        padding: 8px 10px;
+        border-radius: 8px;
+        border: 1px solid #2a3042;
+        background: #1a1f2d;
+        color: #e6e7eb;
+      }
+      button {
+        cursor: pointer;
+      }
+      button:hover {
+        background: #20273a;
+      }
+      button:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+      }
+      .pill {
+        padding: 3px 8px;
+        border-radius: 999px;
+        font-size: 12px;
+        border: 1px solid transparent;
+      }
+      .ok {
+        background: #064e3b;
+        color: #c7f9e5;
+        border-color: #0a6d54;
+      }
+      .warn {
+        background: #3b2f06;
+        color: #ffe9a8;
+        border-color: #6d5a0a;
+      }
+      .err {
+        background: #5a1016;
+        color: #ffd0d4;
+        border-color: #8b1f28;
+      }
+      .k {
+        color: #9aa4b2;
+      }
+      .digits button {
+        width: 32px;
+      }
+      .grow {
+        flex: 1 1 auto;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        background: #0d0f14;
+        border: 1px solid #1f2433;
+        border-radius: 8px;
+        overflow: hidden;
+      }
+      th,
+      td {
+        padding: 8px 12px;
+        text-align: left;
+        border-bottom: 1px solid #1f2433;
+        font-size: 12px;
+      }
+      th {
+        background: #151821;
+        color: #9aa4b2;
+        font-weight: 600;
+      }
+      tr:last-child td {
+        border-bottom: none;
+      }
+      tr:hover {
+        background: #0f1116;
+      }
+      .correct {
+        color: #6ee7b7;
+      }
+      .incorrect {
+        color: #fca5a5;
+      }
+      .table-container {
+        max-height: 400px;
+        overflow-x: auto;
+        overflow-y: auto;
+      }
+      .softmax-cell {
+        font-family: ui-monospace, monospace;
+        font-size: 11px;
+        max-width: 800px;
+        word-break: break-all;
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="canvas" width="28" height="28" style="display: none"></canvas>
+
+    <div class="card">
+      <h1>Paragon MNIST — RAW ONLY (WASM)</h1>
+
+      <div class="row">
+        <span class="k">WASM:</span>
+        <span id="wasmPill" class="pill warn">loading…</span>
+        <span class="k">Net:</span> <span id="netPill" class="pill">—</span>
+        <span class="k">Weights:</span> <span id="wPill" class="pill">—</span>
+      </div>
+
+      <div class="row">
+        <button id="btnCreate">Create MNIST net</button>
+        <button id="btnPerturb" disabled>Perturb weights</button>
+      </div>
+
+      <div class="row">
+        <input id="modelUrl" class="grow" value="http://127.0.0.1:8001/model" />
+        <button id="btnImport" disabled>Fetch & Replace Weights</button>
+      </div>
+
+      <div class="row">
+        <input id="svc" size="28" value="http://127.0.0.1:8001" />
+        <div class="digits">
+          <button data-digit="0" disabled>0</button>
+          <button data-digit="1" disabled>1</button>
+          <button data-digit="2" disabled>2</button>
+          <button data-digit="3" disabled>3</button>
+          <button data-digit="4" disabled>4</button>
+          <button data-digit="5" disabled>5</button>
+          <button data-digit="6" disabled>6</button>
+          <button data-digit="7" disabled>7</button>
+          <button data-digit="8" disabled>8</button>
+          <button data-digit="9" disabled>9</button>
+        </div>
+      </div>
+
+      <div class="row">
+        <button id="btnClear">Clear Results Table</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h1>Results</h1>
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr>
+              <th>Phase</th>
+              <th>Input</th>
+              <th>Predicted</th>
+              <th>Confidence</th>
+              <th>Match</th>
+              <th>Softmax Output (All 10 Classes)</th>
+            </tr>
+          </thead>
+          <tbody id="resultsBody">
+            <tr>
+              <td colspan="6" style="text-align: center; color: #9aa4b2">
+                No results yet. Click a digit button to test.
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <script>
+      const $ = (id) => document.getElementById(id);
+      const setPill = (el, text, cls) => {
+        el.textContent = text;
+        el.className = "pill " + (cls || "");
+      };
+      const argsJSON = (...a) => JSON.stringify(a);
+
+      const wasmPill = $("wasmPill"),
+        netPill = $("netPill"),
+        wPill = $("wPill");
+      const btnCreate = $("btnCreate"),
+        btnPerturb = $("btnPerturb"),
+        btnImport = $("btnImport");
+      const btnClear = $("btnClear"),
+        modelUrl = $("modelUrl"),
+        svc = $("svc"),
+        resultsBody = $("resultsBody");
+
+      const go = new Go();
+      let NewNetworkFloat32 = null;
+      let net = null;
+      let phase = "before_load";
+
+      (async function init() {
+        try {
+          const buf = await (await fetch("paragon.wasm")).arrayBuffer();
+          const mod = await WebAssembly.instantiate(buf, go.importObject);
+          go.run(mod.instance);
+          NewNetworkFloat32 = self.NewNetworkFloat32;
+          if (!NewNetworkFloat32) throw new Error("NewNetworkFloat32 missing");
+          setPill(wasmPill, "ready", "ok");
+        } catch (e) {
+          setPill(wasmPill, "error", "err");
+          console.error(e);
+        }
+      })();
+
+      btnCreate.onclick = () => {
+        try {
+          const L = JSON.stringify([
+            { Width: 28, Height: 28 },
+            { Width: 256, Height: 1 },
+            { Width: 10, Height: 1 },
+          ]);
+          const A = JSON.stringify(["linear", "relu", "softmax"]);
+          const F = JSON.stringify([true, true, true]);
+          net = NewNetworkFloat32(L, A, F);
+          if (!net) throw new Error("failed to create network");
+          setPill(netPill, "made", "ok");
+          btnPerturb.disabled = false;
+          btnImport.disabled = false;
+          document
+            .querySelectorAll("[data-digit]")
+            .forEach((b) => (b.disabled = false));
+          phase = "before_load";
+        } catch (e) {
+          setPill(netPill, "error", "err");
+          console.error(e);
+        }
+      };
+
+      btnPerturb.onclick = () => {
+        try {
+          if (net?.PerturbWeights) {
+            net.PerturbWeights(argsJSON(0.05, 1337));
+            setPill(wPill, "perturbed", "warn");
+          }
+        } catch (e) {
+          console.error(e);
+        }
+      };
+
+      btnImport.onclick = async () => {
+        const url = modelUrl.value.trim();
+        try {
+          const resp = await fetch(url);
+          if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+          const buf = await resp.arrayBuffer();
+          const u8 = new Uint8Array(buf);
+
+          net.UnmarshalJSONModel(argsJSON(Array.from(u8.values())));
+          setPill(wPill, "loaded", "ok");
+          phase = "after_load";
+          btnPerturb.disabled = true;
+        } catch (e) {
+          setPill(wPill, "failed", "err");
+          console.error(e);
+        }
+      };
+
+      function addResultRow(
+        inputDigit,
+        predictedDigit,
+        confidence,
+        phaseLabel,
+        allProbs
+      ) {
+        if (
+          resultsBody.children.length === 1 &&
+          resultsBody.children[0].cells.length === 1
+        ) {
+          resultsBody.innerHTML = "";
+        }
+
+        const row = resultsBody.insertRow(0);
+        const isCorrect = parseInt(inputDigit) === predictedDigit;
+
+        row.insertCell(0).textContent = phaseLabel;
+        row.insertCell(1).textContent = inputDigit;
+        row.insertCell(2).textContent = predictedDigit;
+        row.insertCell(3).textContent = (confidence * 100).toFixed(2) + "%";
+
+        const matchCell = row.insertCell(4);
+        matchCell.textContent = isCorrect ? "✓" : "✗";
+        matchCell.className = isCorrect ? "correct" : "incorrect";
+
+        const softmaxCell = row.insertCell(5);
+        softmaxCell.className = "softmax-cell";
+        softmaxCell.textContent = `[${allProbs
+          .map((p, i) => `${i}:${p.toFixed(10)}`)
+          .join(", ")}]`;
+      }
+
+      async function runDigit(d) {
+        try {
+          const url = `${svc.value.replace(/\/+$/, "")}/static/images/${d}.png`;
+          const resp = await fetch(url);
+          if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+          const blob = await resp.blob();
+
+          const img = new Image();
+          img.src = URL.createObjectURL(blob);
+          await new Promise((resolve, reject) => {
+            img.onload = resolve;
+            img.onerror = () => reject(new Error("Image load failed"));
+          });
+
+          const canvas = $("canvas");
+          const ctx = canvas.getContext("2d");
+          ctx.imageSmoothingEnabled = false;
+          ctx.drawImage(img, 0, 0, 28, 28);
+          const { data } = ctx.getImageData(0, 0, 28, 28);
+
+          const img2d = [];
+          for (let y = 0; y < 28; y++) {
+            const row = [];
+            for (let x = 0; x < 28; x++) {
+              const idx = (y * 28 + x) * 4;
+              const r = data[idx];
+              const g = data[idx + 1];
+              const b = data[idx + 2];
+              // ITU-R BT.601 grayscale formula (same as Node.js)
+              const gray = 0.299 * r + 0.587 * g + 0.114 * b;
+              row.push(gray / 255.0);
+            }
+            img2d.push(row);
+          }
+          URL.revokeObjectURL(img.src);
+
+          net.Forward(argsJSON(img2d));
+          const raw = net.ExtractOutput ? net.ExtractOutput() : net.GetOutput();
+
+          let probabilities;
+          if (typeof raw === "string") {
+            probabilities = JSON.parse(raw)[0];
+          } else if (Array.isArray(raw)) {
+            probabilities = raw[0];
+          } else {
+            probabilities = raw;
+          }
+
+          const predictedClass = probabilities.indexOf(
+            Math.max(...probabilities)
+          );
+          const confidence = probabilities[predictedClass];
+
+          addResultRow(d, predictedClass, confidence, phase, probabilities);
+        } catch (e) {
+          console.error(e);
+        }
+      }
+
+      document
+        .querySelectorAll("[data-digit]")
+        .forEach((b) =>
+          b.addEventListener("click", () =>
+            runDigit(b.getAttribute("data-digit"))
+          )
+        );
+
+      btnClear.onclick = () => {
+        resultsBody.innerHTML =
+          '<tr><td colspan="6" style="text-align: center; color: #9aa4b2;">No results yet. Click a digit button to test.</td></tr>';
+      };
+    </script>
+  </body>
+</html>
