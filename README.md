@@ -163,6 +163,152 @@ graph TD
 
 ---
 
+# 🧠 Paragon MNIST Microservice
+
+### Overview
+
+The Paragon MNIST microservice demonstrates deterministic AI inference across completely different programming environments.
+A single trained model is shared between multiple runtimes — Python, Golang, Node.js, and the browser — each running the same Paragon engine through its respective bridge layer.
+
+This service verifies **cross-stack parity**: every environment produces identical outputs down to the smallest floating-point difference.
+
+---
+
+### Core Idea
+
+Train the model once using **paragon-py** (Python), save it as a `.json` or `.bin` file, and then load it across every supported runtime:
+
+- **Python** uses the **C-ABI bridge**.
+- **Golang** runs directly through Paragon’s **native API**.
+- **NodeJS** executes the **WASM-compiled** runtime through the V8 engine.
+- **Ionic / Browser** downloads the same model from NodeJS and runs it locally through **Portal + Paragon WASM**, powered by WebGPU.
+
+Every layer operates independently but runs the _same deterministic Paragon code_.
+
+---
+
+### Architecture Overview
+
+```mermaid
+flowchart TD
+    %% ===== Training =====
+    subgraph TRAINING
+        PYTRAIN[Python trains model using paragon-py]
+        MODEL[Saved model file shared across environments]
+        PYTRAIN --> MODEL
+    end
+
+    %% ===== Programming Languages and Environments =====
+    subgraph ENVIRONMENTS
+        PYENV[Python environment]
+        GOENV[Golang environment]
+        NODEENV[NodeJS environment]
+        BROWSERENV[Ionic browser environment]
+    end
+
+    %% ===== Bridge Layers =====
+    subgraph BRIDGES
+        CABI[C-ABI bridge]
+        NATIVE[Native API]
+        WASMNODE[WASM Portal bridge for NodeJS]
+        WASMBROWSER[WASM Portal bridge for Browser]
+    end
+
+    %% ===== Core Runtime =====
+    subgraph PARAGON
+        CORE[Paragon deterministic engine same code across all environments]
+    end
+
+    %% ===== Connections =====
+    MODEL --> PYENV
+    MODEL --> GOENV
+    MODEL --> NODEENV
+    MODEL --> BROWSERENV
+
+    PYENV --> CABI --> CORE
+    GOENV --> NATIVE --> CORE
+    NODEENV --> WASMNODE --> CORE
+    BROWSERENV --> WASMBROWSER --> CORE
+
+    BROWSERENV -->|Downloads model and images from| NODEENV
+
+    %% ===== Styling =====
+    classDef training fill:#00d1b2,stroke:#00b89c,color:#fff
+    classDef env fill:#1e1e1e,stroke:#444,color:#fff
+    classDef bridge fill:#333,stroke:#555,color:#fff
+    classDef core fill:#111,stroke:#00b89c,color:#fff
+
+    class PYTRAIN,MODEL training
+    class PYENV,GOENV,NODEENV,BROWSERENV env
+    class CABI,NATIVE,WASMNODE,WASMBROWSER bridge
+    class CORE core
+```
+
+---
+
+### Data Flow Summary
+
+1. **Training** – The model is trained using `paragon-py` and saved as a portable binary.
+2. **Model Distribution** – That file is copied into each microservice’s runtime folder.
+3. **Serving** –
+
+   - NodeJS hosts `/model` and `/static/images/:digit.png`.
+   - Python, Golang, and NodeJS each expose a `/parity` endpoint for testing outputs.
+
+4. **Frontend Execution** –
+
+   - The Ionic app fetches the model and images from NodeJS.
+   - Portal loads the WASM runtime, runs inference locally, and displays parity results.
+
+---
+
+### Why It Matters
+
+Most frameworks suffer from _numerical drift_ between CPU, GPU, and language runtimes.
+Paragon demonstrates that a single AI model can maintain **bit-level parity** across entirely different ecosystems — a first step toward reproducible, portable AI.
+
+This approach allows:
+
+- Verifiable results between cloud, local, and browser inference.
+- Cross-language model deployment without retraining or conversion.
+- Deterministic neural execution, ideal for compliance and reproducibility testing.
+
+---
+
+### Endpoints
+
+| Service | Path                        | Description                           |
+| ------- | --------------------------- | ------------------------------------- |
+| Python  | `/parity`                   | Runs inference via C-ABI bridge       |
+| Golang  | `/parity`                   | Runs native Paragon inference         |
+| NodeJS  | `/parity`                   | Runs inference via WASM               |
+| NodeJS  | `/model`                    | Serves the shared model file          |
+| NodeJS  | `/static/images/:digit.png` | Provides test inputs for all runtimes |
+
+---
+
+### Proof of Concept — Cross-Stack Parity
+
+The image below shows the **end goal of the MNIST parity test**:
+a single trained Paragon model running **identically** across every backend and frontend environment.
+
+Each row in the interface represents a different runtime executing the _same model weights_:
+
+- **NodeJS (WASM through V8)**
+- **Python (C-ABI binding)**
+- **Golang (Native Paragon runtime)**
+- **Browser (Ionic + Portal WebGPU)**
+
+The columns display the ten output probabilities (`p0`–`p9`) for the selected digit.
+When you see identical probability values across every row, you’re witnessing _deterministic AI in action_ — the same inference result replicated across entirely different programming languages and hardware environments.
+
+This parity proves that **one Paragon model file** can move between runtimes without retraining, quantization drift, or rounding error.
+It’s the foundation of Paragon’s goal: **build once, run everywhere, reproduce everything.**
+
+![MNIST Parity Interface Screenshot](mnist_end_goal.png)
+
+---
+
 ## 📦 Future Additions
 
 - **`openfluke/paragon-py`** — Official **Python binding** for Paragon (available on [PyPI](https://pypi.org/project/paragon-py/)).  
