@@ -1,0 +1,52 @@
+# --- Go build artifacts ---
+/mnist_service_go
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+
+# --- Modules & caches ---
+/vendor/
+/bin/
+/build/
+/dist/
+/coverage/
+/.tmp/
+/tmp/
+/cache/
+
+# Go tooling
+go.work
+go.work.sum
+
+# --- Parity script outputs ---
+parity_report.json
+parity_summary.csv
+
+# --- MNIST assets & generated images ---
+/images/
+/mnist_idx/
+*.png
+
+# --- Logs ---
+*.log
+logs/
+nohup.out
+
+# --- Env / local config ---
+.env
+.env.*
+*.local
+
+# --- Editor/IDE ---
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+mnist_paragon_model.json
