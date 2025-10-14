@@ -1,0 +1,7 @@
+{
+  "name": "reporting",
+  "integrations": {
+    "capacitor": {}
+  },
+  "type": "react-vite"
+}

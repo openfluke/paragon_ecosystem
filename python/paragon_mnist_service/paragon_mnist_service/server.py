@@ -142,7 +142,7 @@ def predict_raw(image: str = Query(...), backend: str = Query("gpu")):
 
 def main():
     import uvicorn
-    uvicorn.run("paragon_mnist_service.server:app", host="0.0.0.0", port=8000, reload=True)
+    uvicorn.run("paragon_mnist_service.server:app", host="0.0.0.0", port=8002, reload=True)
 
 if __name__ == "__main__":
     main()

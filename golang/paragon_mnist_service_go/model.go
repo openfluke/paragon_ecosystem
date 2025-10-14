@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"math"
 	"time"
 
@@ -86,14 +87,11 @@ func (h *ParagonHandle) ExtractOutput() []float64 {
 
 func forwardProbs(h *ParagonHandle, img [][]float64) (*ProbResult, error) {
 	h.Forward(img)
-	logits := h.ExtractOutput()
-
-	// last 10 entries are logits for classes
-	if len(logits) < 10 {
-		return nil, errors.New("output too small")
+	out := h.ExtractOutput() // already post-activation
+	if len(out) < 10 {
+		return nil, fmt.Errorf("output too small: %d", len(out))
 	}
-	start := len(logits) - 10
-	probs := softmax(logits[start:])
+	probs := out[len(out)-10:] // last layer is softmax → these ARE probabilities
 	pred := argmax(probs)
 	return &ProbResult{Pred: pred, Probs: probs}, nil
 }

@@ -4,7 +4,7 @@
 # ------------------------------------------------------------
 set -euo pipefail
 
-URL="${1:-http://127.0.0.1:8000}"
+URL="${1:-http://127.0.0.1:8001}"
 OUT_JSON="parity_report.json"
 OUT_CSV="parity_summary.csv"
 

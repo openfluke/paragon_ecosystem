@@ -181,11 +181,16 @@ def initialize_models():
 def paragon_forward_probs(handle: int, img_28x28: List[List[float]]) -> dict:
     """
     Run forward inference on one MNIST image.
+    Treat the last 10 outputs as probabilities because the model's final layer is 'softmax'.
     Returns: {'pred': int, 'probs': [10 floats], 'latency_sec': float}
     """
     t0 = time.time()
     p.forward(handle, img_28x28)
-    logits = p.extract_output(handle)[-10:]  # last 10 are class logits
-    probs = softmax(logits)
+    probs = p.extract_output(handle)[-10:]  # already post-softmax from the model
     pred = max(range(10), key=lambda i: probs[i])
-    return {"pred": pred, "probs": probs, "latency_sec": round(time.time() - t0, 6)}
+    return {
+        "pred": pred,
+        "probs": probs,
+        "latency_sec": round(time.time() - t0, 6),
+    }
+

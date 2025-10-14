@@ -84,7 +84,7 @@ func main() {
 	http.HandleFunc("/predict-raw", handlePredictRaw) // raw logits endpoint
 	http.HandleFunc("/parity", handleParity)
 
-	addr := getEnv("ADDR", "0.0.0.0:8000")
+	addr := getEnv("ADDR", "0.0.0.0:8003")
 	log.Printf("🚀 Listening on http://%s", addr)
 	log.Fatal(http.ListenAndServe(addr, withCORS(http.DefaultServeMux)))
 }

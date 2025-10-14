@@ -343,15 +343,23 @@ export async function forwardProbs10(
   img28x28: number[][]
 ): Promise<{ pred: number; probs: number[]; latency_sec: number }> {
   const t0 = performance.now();
+
+  // Forward pass through the Paragon network
   nn.Forward?.(JSON.stringify([img28x28]));
+
+  // Extract the model output (already includes softmax in final layer)
   const raw = nn.ExtractOutput?.();
-  const logits = parseOutputVector(raw).slice(-10);
-  const probs = softmax(logits);
+  const probs = parseOutputVector(raw).slice(-10); // ← no softmax here!
+
+  // Argmax to find predicted digit
   const pred = probs.reduce(
     (best, val, i, arr) => (val > arr[best] ? i : best),
     0
   );
+
+  // Measure latency in seconds
   const latency_sec = Math.round((performance.now() - t0) * 1e3) / 1e6;
+
   return { pred, probs, latency_sec };
 }
 
