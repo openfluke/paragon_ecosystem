@@ -2,15 +2,16 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <title>Paragon MNIST (28×28 → 256 → 10)</title>
+    <title>Paragon MNIST — WASM (28×28 → 256 → 10)</title>
     <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <script src="wasm_exec.js"></script>
     <style>
       :root {
         color-scheme: dark;
       }
       body {
         margin: 24px;
-        font: 14px/1.45 ui-monospace, Menlo, Consolas, monospace;
+        font: 14px/1.5 ui-monospace, Menlo, Consolas, monospace;
         background: #0b0c0f;
         color: #e6e7eb;
       }
@@ -48,6 +49,10 @@
       button:hover {
         background: #20273a;
       }
+      button:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+      }
       .pill {
         padding: 3px 8px;
         border-radius: 999px;
@@ -81,19 +86,6 @@
         max-height: 280px;
         overflow: auto;
       }
-      .grid {
-        display: grid;
-        grid-template-columns: repeat(10, 56px);
-        gap: 10px;
-      }
-      .thumb {
-        width: 56px;
-        height: 56px;
-        object-fit: cover;
-        border: 1px solid #2a3042;
-        border-radius: 8px;
-        background: #0d0f14;
-      }
       .digits button {
         width: 32px;
       }
@@ -118,204 +110,273 @@
     </style>
   </head>
   <body>
+    <canvas id="canvas" width="28" height="28" style="display: none"></canvas>
     <div class="card">
-      <h1>Paragon MNIST (28×28 → 256 → 10)</h1>
+      <h1>Paragon MNIST — WASM (28×28 → 256 → 10)</h1>
 
       <div class="row">
-        <span class="k">Service:</span>
-        <input id="svc" size="34" value="http://127.0.0.1:8001" />
-        <button id="btnHealth">Health</button>
-        <span id="svcStatus" class="pill warn">unknown</span>
-        <span class="k">GPU:</span>
-        <span id="gpuStatus" class="pill">—</span>
+        <span class="k">WASM:</span>
+        <span id="wasmPill" class="pill warn">loading…</span>
+        <span class="k">Net:</span> <span id="netPill" class="pill">—</span>
+        <span class="k">Weights:</span> <span id="wPill" class="pill">—</span>
       </div>
 
       <div class="row">
-        <button id="btnList">List images</button>
-        <span id="imgCount" class="pill">images: 0</span>
-        <span class="k">Backend:</span>
-        <select id="backend">
-          <option value="gpu">gpu</option>
-          <option value="cpu">cpu</option>
-        </select>
-        <button id="btnParity">Parity (0–9)</button>
-        <span id="paritySummary" class="pill">—</span>
+        <button id="btnCreate">Create MNIST net</button>
+        <button id="btnPerturb" disabled>Perturb weights</button>
       </div>
 
       <div class="row">
-        <div class="flex1">
-          <div class="label">Samples (served by backend)</div>
-          <div id="thumbs" class="grid"></div>
-        </div>
-        <div style="min-width: 280px">
-          <div class="row digits">
-            <span class="k">Quick run:</span>
-            <button data-digit="0">0</button><button data-digit="1">1</button>
-            <button data-digit="2">2</button><button data-digit="3">3</button>
-            <button data-digit="4">4</button><button data-digit="5">5</button>
-            <button data-digit="6">6</button><button data-digit="7">7</button>
-            <button data-digit="8">8</button><button data-digit="9">9</button>
-          </div>
-          <div class="row">
-            <div class="stat">
-              <div class="label">Predicted</div>
-              <div id="pred" class="val">—</div>
-            </div>
-            <div class="stat">
-              <div class="label">Confidence</div>
-              <div id="conf" class="val">—</div>
-            </div>
-            <div class="stat">
-              <div class="label">Latency</div>
-              <div id="lat" class="val">—</div>
-            </div>
-          </div>
+        <input id="modelUrl" size="42" value="http://127.0.0.1:8001/model" />
+        <button id="btnImport" disabled>Fetch & Replace Weights</button>
+      </div>
+
+      <div class="row">
+        <input id="svc" size="28" value="http://127.0.0.1:8001" />
+        <div class="digits">
+          <button data-digit="0" disabled>0</button
+          ><button data-digit="1" disabled>1</button>
+          <button data-digit="2" disabled>2</button
+          ><button data-digit="3" disabled>3</button>
+          <button data-digit="4" disabled>4</button
+          ><button data-digit="5" disabled>5</button>
+          <button data-digit="6" disabled>6</button
+          ><button data-digit="7" disabled>7</button>
+          <button data-digit="8" disabled>8</button
+          ><button data-digit="9" disabled>9</button>
         </div>
       </div>
 
-      <pre id="log">Ready.</pre>
+      <div class="row">
+        <div class="stat">
+          <div class="label">Predicted</div>
+          <div id="pred" class="val">—</div>
+        </div>
+        <div class="stat">
+          <div class="label">Confidence</div>
+          <div id="conf" class="val">—</div>
+        </div>
+        <div class="stat">
+          <div class="label">Latency</div>
+          <div id="lat" class="val">—</div>
+        </div>
+      </div>
+
+      <pre id="log">Loading…</pre>
     </div>
 
     <script>
       const $ = (id) => document.getElementById(id);
-      const svc = $("svc");
-      const svcStatus = $("svcStatus");
-      const gpuStatus = $("gpuStatus");
-      const imgCount = $("imgCount");
-      const thumbs = $("thumbs");
-      const predEl = $("pred"),
+      const wasmPill = $("wasmPill"),
+        netPill = $("netPill"),
+        wPill = $("wPill");
+      const btnCreate = $("btnCreate"),
+        btnPerturb = $("btnPerturb");
+      const btnImport = $("btnImport"),
+        modelUrl = $("modelUrl");
+      const svc = $("svc"),
+        logEl = $("log"),
+        predEl = $("pred"),
         confEl = $("conf"),
         latEl = $("lat");
-      const logEl = $("log");
 
-      const softmax = (xs) => {
-        const m = Math.max(...xs);
-        const exps = xs.map((x) => Math.exp(x - m));
-        const s = exps.reduce((a, b) => a + b, 0) || 1;
-        return exps.map((x) => x / s);
-      };
-
-      function setPill(el, text, cls) {
+      const setPill = (el, text, cls) => {
         el.textContent = text;
         el.className = "pill " + (cls || "");
-      }
-      function log(x) {
-        logEl.textContent =
-          typeof x === "string" ? x : JSON.stringify(x, null, 2);
-      }
-      function svcUrl(path) {
-        return svc.value.replace(/\/+$/, "") + path;
-      }
+      };
+      const log = (x) =>
+        (logEl.textContent =
+          typeof x === "string" ? x : JSON.stringify(x, null, 2));
+      const softmax = (xs) => {
+        const nums = xs.map(Number);
+        const m = Math.max(...nums);
+        const exps = nums.map((v) => Math.exp(v - m));
+        const s = exps.reduce((a, b) => a + b, 0) || 1;
+        return exps.map((e) => e / s);
+      };
+      const argsJSON = (...a) => JSON.stringify(a);
 
-      // Health
-      $("btnHealth").onclick = async () => {
+      // WASM setup
+      const go = new Go();
+      let NewNetworkFloat32 = null;
+      let net = null;
+
+      (async function init() {
         try {
-          const r = await fetch(svcUrl("/health"));
-          const j = await r.json();
-          setPill(svcStatus, j.ok ? "ok" : "fail", j.ok ? "ok" : "err");
-          setPill(
-            gpuStatus,
-            j.gpu_available ? "available" : "cpu-only",
-            j.gpu_available ? "ok" : "warn"
-          );
-          log(j);
+          const buf = await (await fetch("paragon.wasm")).arrayBuffer();
+          const mod = await WebAssembly.instantiate(buf, go.importObject);
+          go.run(mod.instance);
+          NewNetworkFloat32 = self.NewNetworkFloat32;
+          if (!NewNetworkFloat32) throw new Error("NewNetworkFloat32 missing");
+          setPill(wasmPill, "ready", "ok");
+          log("✅ WASM initialized.");
         } catch (e) {
-          setPill(svcStatus, "error", "err");
+          setPill(wasmPill, "error", "err");
+          log(e?.stack || e);
+        }
+      })();
+
+      // Create network (28×28→256→10) matching backend
+      btnCreate.onclick = () => {
+        try {
+          const L = JSON.stringify([
+            { Width: 28, Height: 28 },
+            { Width: 256, Height: 1 },
+            { Width: 10, Height: 1 },
+          ]);
+          const A = JSON.stringify(["linear", "relu", "softmax"]);
+          const F = JSON.stringify([true, true, true]);
+          net = NewNetworkFloat32(L, A, F);
+          if (!net) throw new Error("failed to create network");
+          setPill(netPill, "made", "ok");
+          btnPerturb.disabled = btnImport.disabled = false;
+          document
+            .querySelectorAll("[data-digit]")
+            .forEach((b) => (b.disabled = false));
+          log("✅ Created network matching backend (random weights).");
+        } catch (e) {
+          setPill(netPill, "error", "err");
           log(e?.stack || e);
         }
       };
 
-      // List + render thumbnails
-      $("btnList").onclick = async () => {
+      // Perturb weights (optional)
+      btnPerturb.onclick = () => {
         try {
-          const r = await fetch(svcUrl("/images/list"));
-          const j = await r.json();
-          const names = j.images || [];
-          imgCount.textContent = "images: " + names.length;
-          thumbs.innerHTML = "";
-          for (const name of names) {
-            const img = document.createElement("img");
-            img.src = svcUrl("/static/images/" + name);
-            img.title = name;
-            img.className = "thumb";
-            img.onclick = () => runPredict(name);
-            thumbs.appendChild(img);
+          if (typeof net.PerturbWeights === "function") {
+            net.PerturbWeights(argsJSON(0.05, 1337));
+            setPill(wPill, "perturbed", "warn");
+            log("Weights perturbed for demo.");
           }
-          log(j);
         } catch (e) {
           log(e?.stack || e);
         }
       };
 
-      // Predict (uses /predict for probs & latency; /predict-raw available if you want logits)
-      async function runPredict(imageName) {
-        const backend = $("backend").value;
+      // Import weights (from backend model JSON)
+      btnImport.onclick = async () => {
         try {
-          const t0 = performance.now();
-          const r = await fetch(
-            svcUrl(
-              `/predict?image=${encodeURIComponent(
-                imageName
-              )}&backend=${backend}`
-            )
+          const text = await (await fetch(modelUrl.value.trim())).text();
+          if (typeof net.UnmarshalJSONModel === "function") {
+            net.UnmarshalJSONModel(text);
+          } else if (typeof net.UnmarshalJSON === "function") {
+            net.UnmarshalJSON(text);
+          }
+          setPill(wPill, "loaded", "ok");
+          log("✅ Weights replaced from backend model.");
+        } catch (e) {
+          setPill(wPill, "failed", "err");
+          log(e?.stack || e);
+        }
+      };
+
+      function readOutput() {
+        try {
+          const raw = net.ExtractOutput ? net.ExtractOutput() : net.GetOutput();
+          let out;
+          try {
+            out = JSON.parse(raw || "[]");
+          } catch (parseErr) {
+            console.error("JSON parse error:", parseErr);
+            out = [];
+          }
+
+          // Flatten if output is nested like [[...]]
+          if (Array.isArray(out) && out.length === 1 && Array.isArray(out[0])) {
+            out = out[0];
+          }
+
+          if (!Array.isArray(out) || out.length !== 10) {
+            console.warn(
+              "Output length not 10, got",
+              Array.isArray(out) ? out.length : "non-array"
+            );
+            return new Array(10).fill(0);
+          }
+
+          console.log("✅ Parsed output:", out);
+          return out.map((x) => Number(x) || 0);
+        } catch (e) {
+          console.error("Output read error:", e);
+          return new Array(10).fill(0);
+        }
+      }
+
+      function showResult(t0) {
+        try {
+          const logits = readOutput();
+          const probs = softmax(logits);
+          const pred = probs.reduce(
+            (iMax, x, i, arr) => (x > arr[iMax] ? i : iMax),
+            0
           );
-          if (!r.ok) throw new Error("HTTP " + r.status);
-          const j = await r.json();
-          const probs = j.probabilities;
-          const pred = j.prediction;
-          const conf = Math.max(...probs);
-          const lat = j.latency_sec * 1000; // ms
-
           predEl.textContent = String(pred);
-          confEl.textContent = (conf * 100).toFixed(2) + "%";
-          latEl.textContent = lat.toFixed(2) + " ms";
-
-          // Optionally include raw logits (last 10) for debugging:
-          // const r2 = await fetch(svcUrl(`/predict-raw?image=${encodeURIComponent(imageName)}&backend=${backend}`));
-          // const raw = await r2.json();
-
+          confEl.textContent = (Math.max(...probs) * 100).toFixed(2) + "%";
+          latEl.textContent = (performance.now() - t0).toFixed(2) + " ms";
           log({
-            image: imageName,
-            backend,
-            pred,
-            conf: +(conf * 100).toFixed(2) + "%",
-            latency_ms: +lat.toFixed(2),
+            logits: logits.map((x) => +x.toFixed(6)),
             probs: probs.map((x) => +x.toFixed(6)),
-            // logits: raw?.logits?.map(x => +x.toFixed(6))
+            pred,
+            latency_ms: +(performance.now() - t0).toFixed(2),
           });
         } catch (e) {
+          predEl.textContent = "?";
+          confEl.textContent = "—";
+          latEl.textContent = (performance.now() - t0).toFixed(2) + " ms";
+          log({
+            error: e.message,
+            latency_ms: +(performance.now() - t0).toFixed(2),
+          });
+        }
+      }
+
+      // Run digit image from backend (process PNG to 28x28 2D)
+      async function runDigit(d) {
+        try {
+          const url = `${svc.value.replace(/\/+$/, "")}/static/images/${d}.png`;
+          const resp = await fetch(url);
+          if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+          const blob = await resp.blob();
+          const img = new Image();
+          img.src = URL.createObjectURL(blob);
+          await new Promise((resolve, reject) => {
+            img.onload = resolve;
+            img.onerror = () => reject(new Error("Image load failed"));
+          });
+          const canvas = $("canvas");
+          const ctx = canvas.getContext("2d");
+          ctx.drawImage(img, 0, 0, 28, 28);
+          const imageData = ctx.getImageData(0, 0, 28, 28);
+          const data = imageData.data;
+          const img2d = [];
+          for (let y = 0; y < 28; y++) {
+            const row = [];
+            for (let x = 0; x < 28; x++) {
+              const idx = (y * 28 + x) * 4;
+              const gray = data[idx] / 255.0;
+              row.push(gray);
+            }
+            img2d.push(row);
+          }
+          if (img2d.length !== 28 || img2d[0].length !== 28) {
+            throw new Error(
+              `Invalid 2D shape: ${img2d.length}x${img2d[0]?.length || 0}`
+            );
+          }
+          URL.revokeObjectURL(img.src);
+          const t0 = performance.now();
+          net.Forward(argsJSON(img2d));
+          showResult(t0);
+        } catch (e) {
           log(e?.stack || e);
         }
       }
 
-      // Quick digit buttons call /predict on "<d>.png"
-      document.querySelectorAll("[data-digit]").forEach((btn) => {
-        btn.addEventListener("click", () =>
-          runPredict(btn.getAttribute("data-digit") + ".png")
+      document.querySelectorAll("[data-digit]").forEach((b) => {
+        b.addEventListener("click", () =>
+          runDigit(b.getAttribute("data-digit"))
         );
       });
-
-      // Parity sweep (0–9)
-      $("btnParity").onclick = async () => {
-        try {
-          const r = await fetch(svcUrl("/parity"));
-          const j = await r.json();
-          const mism = j.mismatches ?? 0;
-          const total = j.total ?? 0;
-          setPill(
-            $("paritySummary"),
-            `${total - mism}/${total} match`,
-            mism === 0 ? "ok" : mism < total ? "warn" : "err"
-          );
-          log(j);
-        } catch (e) {
-          log(e?.stack || e);
-        }
-      };
-
-      // First ping
-      $("btnHealth").click();
-      $("btnList").click();
     </script>
   </body>
 </html>

@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Paragon MNIST (28×28 → 256 → 10)</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <style>
+      :root {
+        color-scheme: dark;
+      }
+      body {
+        margin: 24px;
+        font: 14px/1.45 ui-monospace, Menlo, Consolas, monospace;
+        background: #0b0c0f;
+        color: #e6e7eb;
+      }
+      h1 {
+        margin: 0 0 14px;
+        font-size: 20px;
+      }
+      .card {
+        background: #151821;
+        border: 1px solid #222737;
+        border-radius: 10px;
+        padding: 14px;
+        max-width: 900px;
+      }
+      .row {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        flex-wrap: wrap;
+        margin: 10px 0;
+      }
+      input,
+      button,
+      select {
+        font: inherit;
+        padding: 8px 10px;
+        border-radius: 8px;
+        border: 1px solid #2a3042;
+        background: #1a1f2d;
+        color: #e6e7eb;
+      }
+      button {
+        cursor: pointer;
+      }
+      button:hover {
+        background: #20273a;
+      }
+      .pill {
+        padding: 3px 8px;
+        border-radius: 999px;
+        font-size: 12px;
+        border: 1px solid transparent;
+      }
+      .ok {
+        background: #064e3b;
+        color: #c7f9e5;
+        border-color: #0a6d54;
+      }
+      .warn {
+        background: #3b2f06;
+        color: #ffe9a8;
+        border-color: #6d5a0a;
+      }
+      .err {
+        background: #5a1016;
+        color: #ffd0d4;
+        border-color: #8b1f28;
+      }
+      .k {
+        color: #9aa4b2;
+      }
+      pre {
+        white-space: pre-wrap;
+        background: #0d0f14;
+        border: 1px solid #1f2433;
+        border-radius: 8px;
+        padding: 10px;
+        max-height: 280px;
+        overflow: auto;
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(10, 56px);
+        gap: 10px;
+      }
+      .thumb {
+        width: 56px;
+        height: 56px;
+        object-fit: cover;
+        border: 1px solid #2a3042;
+        border-radius: 8px;
+        background: #0d0f14;
+      }
+      .digits button {
+        width: 32px;
+      }
+      .stat {
+        min-width: 180px;
+        background: #0d0f14;
+        border: 1px solid #1f2433;
+        border-radius: 8px;
+        padding: 8px;
+      }
+      .label {
+        font-size: 12px;
+        color: #9aa4b2;
+      }
+      .val {
+        font-weight: 700;
+        margin-top: 2px;
+      }
+      .flex1 {
+        flex: 1 1 auto;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <h1>Paragon MNIST (28×28 → 256 → 10)</h1>
+
+      <div class="row">
+        <span class="k">Service:</span>
+        <input id="svc" size="34" value="http://127.0.0.1:8001" />
+        <button id="btnHealth">Health</button>
+        <span id="svcStatus" class="pill warn">unknown</span>
+        <span class="k">GPU:</span>
+        <span id="gpuStatus" class="pill">—</span>
+      </div>
+
+      <div class="row">
+        <button id="btnList">List images</button>
+        <span id="imgCount" class="pill">images: 0</span>
+        <span class="k">Backend:</span>
+        <select id="backend">
+          <option value="gpu">gpu</option>
+          <option value="cpu">cpu</option>
+        </select>
+        <button id="btnParity">Parity (0–9)</button>
+        <span id="paritySummary" class="pill">—</span>
+      </div>
+
+      <div class="row">
+        <div class="flex1">
+          <div class="label">Samples (served by backend)</div>
+          <div id="thumbs" class="grid"></div>
+        </div>
+        <div style="min-width: 280px">
+          <div class="row digits">
+            <span class="k">Quick run:</span>
+            <button data-digit="0">0</button><button data-digit="1">1</button>
+            <button data-digit="2">2</button><button data-digit="3">3</button>
+            <button data-digit="4">4</button><button data-digit="5">5</button>
+            <button data-digit="6">6</button><button data-digit="7">7</button>
+            <button data-digit="8">8</button><button data-digit="9">9</button>
+          </div>
+          <div class="row">
+            <div class="stat">
+              <div class="label">Predicted</div>
+              <div id="pred" class="val">—</div>
+            </div>
+            <div class="stat">
+              <div class="label">Confidence</div>
+              <div id="conf" class="val">—</div>
+            </div>
+            <div class="stat">
+              <div class="label">Latency</div>
+              <div id="lat" class="val">—</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <pre id="log">Ready.</pre>
+    </div>
+
+    <script>
+      const $ = (id) => document.getElementById(id);
+      const svc = $("svc");
+      const svcStatus = $("svcStatus");
+      const gpuStatus = $("gpuStatus");
+      const imgCount = $("imgCount");
+      const thumbs = $("thumbs");
+      const predEl = $("pred"),
+        confEl = $("conf"),
+        latEl = $("lat");
+      const logEl = $("log");
+
+      const softmax = (xs) => {
+        const m = Math.max(...xs);
+        const exps = xs.map((x) => Math.exp(x - m));
+        const s = exps.reduce((a, b) => a + b, 0) || 1;
+        return exps.map((x) => x / s);
+      };
+
+      function setPill(el, text, cls) {
+        el.textContent = text;
+        el.className = "pill " + (cls || "");
+      }
+      function log(x) {
+        logEl.textContent =
+          typeof x === "string" ? x : JSON.stringify(x, null, 2);
+      }
+      function svcUrl(path) {
+        return svc.value.replace(/\/+$/, "") + path;
+      }
+
+      // Health
+      $("btnHealth").onclick = async () => {
+        try {
+          const r = await fetch(svcUrl("/health"));
+          const j = await r.json();
+          setPill(svcStatus, j.ok ? "ok" : "fail", j.ok ? "ok" : "err");
+          setPill(
+            gpuStatus,
+            j.gpu_available ? "available" : "cpu-only",
+            j.gpu_available ? "ok" : "warn"
+          );
+          log(j);
+        } catch (e) {
+          setPill(svcStatus, "error", "err");
+          log(e?.stack || e);
+        }
+      };
+
+      // List + render thumbnails
+      $("btnList").onclick = async () => {
+        try {
+          const r = await fetch(svcUrl("/images/list"));
+          const j = await r.json();
+          const names = j.images || [];
+          imgCount.textContent = "images: " + names.length;
+          thumbs.innerHTML = "";
+          for (const name of names) {
+            const img = document.createElement("img");
+            img.src = svcUrl("/static/images/" + name);
+            img.title = name;
+            img.className = "thumb";
+            img.onclick = () => runPredict(name);
+            thumbs.appendChild(img);
+          }
+          log(j);
+        } catch (e) {
+          log(e?.stack || e);
+        }
+      };
+
+      // Predict (uses /predict for probs & latency; /predict-raw available if you want logits)
+      async function runPredict(imageName) {
+        const backend = $("backend").value;
+        try {
+          const t0 = performance.now();
+          const r = await fetch(
+            svcUrl(
+              `/predict?image=${encodeURIComponent(
+                imageName
+              )}&backend=${backend}`
+            )
+          );
+          if (!r.ok) throw new Error("HTTP " + r.status);
+          const j = await r.json();
+          const probs = j.probabilities;
+          const pred = j.prediction;
+          const conf = Math.max(...probs);
+          const lat = j.latency_sec * 1000; // ms
+
+          predEl.textContent = String(pred);
+          confEl.textContent = (conf * 100).toFixed(2) + "%";
+          latEl.textContent = lat.toFixed(2) + " ms";
+
+          // Optionally include raw logits (last 10) for debugging:
+          // const r2 = await fetch(svcUrl(`/predict-raw?image=${encodeURIComponent(imageName)}&backend=${backend}`));
+          // const raw = await r2.json();
+
+          log({
+            image: imageName,
+            backend,
+            pred,
+            conf: +(conf * 100).toFixed(2) + "%",
+            latency_ms: +lat.toFixed(2),
+            probs: probs.map((x) => +x.toFixed(6)),
+            // logits: raw?.logits?.map(x => +x.toFixed(6))
+          });
+        } catch (e) {
+          log(e?.stack || e);
+        }
+      }
+
+      // Quick digit buttons call /predict on "<d>.png"
+      document.querySelectorAll("[data-digit]").forEach((btn) => {
+        btn.addEventListener("click", () =>
+          runPredict(btn.getAttribute("data-digit") + ".png")
+        );
+      });
+
+      // Parity sweep (0–9)
+      $("btnParity").onclick = async () => {
+        try {
+          const r = await fetch(svcUrl("/parity"));
+          const j = await r.json();
+          const mism = j.mismatches ?? 0;
+          const total = j.total ?? 0;
+          setPill(
+            $("paritySummary"),
+            `${total - mism}/${total} match`,
+            mism === 0 ? "ok" : mism < total ? "warn" : "err"
+          );
+          log(j);
+        } catch (e) {
+          log(e?.stack || e);
+        }
+      };
+
+      // First ping
+      $("btnHealth").click();
+      $("btnList").click();
+    </script>
+  </body>
+</html>
