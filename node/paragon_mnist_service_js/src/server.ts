@@ -1,7 +1,9 @@
 // src/server.ts
 import express from "express";
 import path from "node:path";
+import cors from "cors";
 import fs from "node:fs";
+import { readFileSync } from "node:fs";
 import { initPortal } from "@openfluke/portal";
 import {
   IMAGES_DIR,
@@ -16,6 +18,10 @@ import { loadMNISTTensorFromPNG } from "./preprocess_mnist";
 
 /*───────────── Express ─────────────*/
 const app = express();
+
+app.use(cors({ origin: true })); // reflects Origin, sets Vary: Origin
+app.options(/.*/, cors()); // handle preflight for any path (Express v5-safe)
+
 app.use(express.json({ limit: "10mb" }));
 app.use("/static/images", express.static(IMAGES_DIR));
 const PORT = Number(process.env.PORT || 8000);
@@ -225,6 +231,38 @@ app.get("/parity", async (req, res) => {
       total: results.length,
       results,
     });
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ✅ NEW: serve the model JSON exactly as saved on disk
+app.get("/model", (_req, res) => {
+  try {
+    const raw = readFileSync(MODEL_JSON, "utf8");
+    // If your file is already in the exact structure your Portal expects,
+    // just return it. Otherwise, transform here before res.json(...)
+    res.type("application/json").send(raw);
+  } catch (e: any) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ✅ NEW: serve a preprocessed input tensor for a given image
+// Returns { input: number[][][] }  // shape: [28][28] wrapped once for batch if you prefer
+app.get("/samples/:image", (req, res) => {
+  try {
+    const image = String(req.params.image || "");
+    if (!image) return res.status(400).json({ error: "image is required" });
+
+    const p = path.join(IMAGES_DIR, image);
+    if (!fs.existsSync(p)) return res.status(404).json({ error: "not found" });
+
+    const { tensor } = loadMNISTTensorFromPNG(p);
+
+    // If your frontend expects a triple-nested array [ [ [28 floats]*28 ] ]:
+    // Ensure tensor is already that (it likely is from your /predict usage).
+    res.json({ input: tensor });
   } catch (e: any) {
     res.status(500).json({ error: e.message });
   }
