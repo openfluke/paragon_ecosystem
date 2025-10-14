@@ -288,7 +288,10 @@ export default function ParagonMnistPortal(props: {
 
   return (
     <div className="section" style={{ minHeight: "100vh" }}>
-      <div className="container">
+      <div
+        className="container is-fluid"
+        style={{ maxWidth: "100%", padding: "0 2rem" }}
+      >
         <h1 className="title is-3">Paragon MNIST • Portal</h1>
 
         {/* Controls */}
@@ -396,34 +399,50 @@ export default function ParagonMnistPortal(props: {
 
         {/* Minimal, professional table: service, digit, p0..p9 */}
         <div
-          className="table-container"
+          className="table-container has-background-dark"
           style={{
+            width: "80vw",
+            margin: "0 auto",
+            border: "1px solid #333",
+            borderRadius: "8px",
+            boxShadow: "0 2px 6px rgba(0,0,0,0.3)",
             overflowX: "auto",
-            border: "1px solid #ddd",
-            borderRadius: 6,
           }}
         >
           <table
-            className="table is-striped is-hoverable is-fullwidth is-narrow"
-            style={{ minWidth: 900 }}
+            className="table is-fullwidth is-hoverable is-narrow"
+            style={{
+              color: "#e0e0e0",
+              backgroundColor: "#1e1e1e",
+              minWidth: "900px",
+              borderCollapse: "separate",
+              borderSpacing: "0",
+            }}
           >
             <thead>
-              <tr>
+              <tr style={{ backgroundColor: "#2a2a2a" }}>
                 <th
                   style={{
                     position: "sticky",
                     left: 0,
-                    //background: "white",
+                    backgroundColor: "#2a2a2a",
                     zIndex: 2,
+                    color: "#ffffff",
+                    textTransform: "uppercase",
+                    letterSpacing: "0.05em",
                   }}
                 >
                   service
                 </th>
-                <th>digit</th>
+                <th style={{ color: "#ffffff" }}>digit</th>
                 {CLASSES.map((k) => (
                   <th
                     key={`p${k}`}
-                    style={{ textAlign: "right", whiteSpace: "nowrap" }}
+                    style={{
+                      textAlign: "right",
+                      whiteSpace: "nowrap",
+                      color: "#ffffff",
+                    }}
                   >
                     p{k}
                   </th>
@@ -431,23 +450,25 @@ export default function ParagonMnistPortal(props: {
               </tr>
             </thead>
             <tbody>
-              {services.map((s) => {
+              {services.map((s, rowIdx) => {
                 const probs = rows[s.label];
+                const rowBg = rowIdx % 2 === 0 ? "#1f1f1f" : "#262626"; // subtle zebra striping
                 return (
-                  <tr key={s.label}>
+                  <tr key={s.label} style={{ backgroundColor: rowBg }}>
                     <td
                       style={{
                         position: "sticky",
                         left: 0,
-                        //background: "white",
+                        backgroundColor: rowBg,
                         zIndex: 1,
                         fontWeight: 600,
                         whiteSpace: "nowrap",
+                        color: "#00d1b2", // Bulma turquoise accent
                       }}
                     >
                       {s.label}
                     </td>
-                    <td>{digit}</td>
+                    <td style={{ color: "#e0e0e0" }}>{digit}</td>
                     {CLASSES.map((k) => (
                       <td
                         key={`${s.label}-p${k}`}
@@ -456,6 +477,7 @@ export default function ParagonMnistPortal(props: {
                             "ui-monospace, Menlo, Consolas, monospace",
                           textAlign: "right",
                           whiteSpace: "nowrap",
+                          color: "#e0e0e0",
                         }}
                       >
                         {probs && probs.length === 10
