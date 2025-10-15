@@ -7,49 +7,65 @@ echo "🧩 Starting environment setup for Paragon..."
 # Detect package manager / distro
 # -------------------------------
 if command -v dnf &>/dev/null; then
-  PM="dnf";   DISTRO="fedora"
+  PM="dnf"; DISTRO="fedora"
 elif command -v apt &>/dev/null; then
-  PM="apt";   DISTRO="ubuntu"
+  PM="apt"; DISTRO="ubuntu"
 else
   echo "❌ Unsupported distro (needs dnf or apt)."; exit 1
 fi
 echo "📦 Detected distro: $DISTRO"
 
-# -------------------------------
-# Helpers
-# -------------------------------
 append_once() {
   local line="$1" file="$2"
   grep -qxF "$line" "$file" 2>/dev/null || echo "$line" >> "$file"
 }
 
 # -------------------------------
+# System compiler toolchain (GCC)
+# -------------------------------
+echo "🧱 Installing GCC toolchain..."
+if [ "$PM" = "dnf" ]; then
+  sudo dnf install -y gcc g++ make
+else
+  sudo apt update -y && sudo apt install -y build-essential
+fi
+
+# sanity check
+if ! command -v gcc &>/dev/null; then
+  echo "❌ gcc not found after install, check your PATH!"
+  exit 1
+else
+  echo "✅ gcc detected at $(which gcc)"
+fi
+
+# persist CGO + compiler paths
+append_once 'export CGO_ENABLED=1' "$HOME/.bashrc"
+append_once 'export CC=/usr/bin/gcc' "$HOME/.bashrc"
+append_once 'export CXX=/usr/bin/g++' "$HOME/.bashrc"
+export CGO_ENABLED=1
+export CC=/usr/bin/gcc
+export CXX=/usr/bin/g++
+
+# -------------------------------
 # Python + pip
 # -------------------------------
 if ! command -v python3 &>/dev/null; then
   echo "🐍 Installing Python 3..."
-  if [ "$PM" = "dnf" ]; then
-    sudo dnf install -y python3
-  else
-    sudo apt update -y && sudo apt install -y python3
-  fi
+  [ "$PM" = "dnf" ] && sudo dnf install -y python3 || \
+    (sudo apt update -y && sudo apt install -y python3)
 else
   echo "✅ Python 3 already present."
 fi
 
 if ! command -v pip3 &>/dev/null; then
   echo "⚙️ Installing pip..."
-  if [ "$PM" = "dnf" ]; then
-    sudo dnf install -y python3-pip
-  else
-    sudo apt install -y python3-pip
-  fi
+  [ "$PM" = "dnf" ] && sudo dnf install -y python3-pip || sudo apt install -y python3-pip
 else
   echo "✅ pip already installed."
 fi
 
 # -------------------------------
-# Latest Go (from go.dev tarball)
+# Go
 # -------------------------------
 echo "🦫 Installing latest Go (if missing)..."
 if command -v go &>/dev/null; then
@@ -79,11 +95,10 @@ if [ "$PM" = "dnf" ]; then
 else
   sudo apt update -y
   sudo apt install -y dotnet-sdk-9.0 || {
-    echo "⚙️ Adding Microsoft package source for .NET 9.0..."
+    echo "⚙️ Adding Microsoft repo..."
     wget -q https://packages.microsoft.com/config/ubuntu/24.04/packages-microsoft-prod.deb -O /tmp/packages-microsoft-prod.deb
     sudo dpkg -i /tmp/packages-microsoft-prod.deb
-    sudo apt update -y
-    sudo apt install -y dotnet-sdk-9.0
+    sudo apt update -y && sudo apt install -y dotnet-sdk-9.0
   }
 fi
 
@@ -93,7 +108,6 @@ fi
 echo "🌐 Installing Bun..."
 if ! command -v bun &>/dev/null; then
   curl -fsSL https://bun.sh/install | bash
-  # Persist Bun PATH for new terminals
   append_once 'export BUN_INSTALL="$HOME/.bun"' "$HOME/.bashrc"
   append_once 'export PATH="$BUN_INSTALL/bin:$PATH"' "$HOME/.bashrc"
   export BUN_INSTALL="$HOME/.bun"
@@ -103,25 +117,22 @@ else
 fi
 
 # -------------------------------
-# Node.js (LTS) + npm
+# Node.js + npm
 # -------------------------------
 echo "🟩 Installing Node.js (LTS) + npm..."
 if command -v node &>/dev/null; then
   echo "✅ Node already installed: $(node -v)"
 else
   if [ "$PM" = "dnf" ]; then
-    # NodeSource for latest LTS on Fedora
     curl -fsSL https://rpm.nodesource.com/setup_lts.x | sudo bash -
     sudo dnf install -y nodejs
   else
-    # NodeSource for Ubuntu/Debian
     curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash -
     sudo apt install -y nodejs
   fi
   echo "✅ Installed Node $(node -v), npm $(npm -v)"
 fi
 
-# Ensure global npm bin is in PATH if not installing with sudo
 NPM_PREFIX=$(npm config get prefix 2>/dev/null || echo "")
 if [[ -n "$NPM_PREFIX" && "$NPM_PREFIX" != "/usr" && "$NPM_PREFIX" != "/usr/local" ]]; then
   append_once "export PATH=\"$NPM_PREFIX/bin:\$PATH\"" "$HOME/.bashrc"
@@ -129,11 +140,10 @@ if [[ -n "$NPM_PREFIX" && "$NPM_PREFIX" != "/usr" && "$NPM_PREFIX" != "/usr/loca
 fi
 
 # -------------------------------
-# Ionic CLI (global)
+# Ionic CLI
 # -------------------------------
 echo "⚡ Installing Ionic CLI..."
 if ! command -v ionic &>/dev/null; then
-  # Use sudo to drop binaries into /usr/bin so new terminals see it immediately
   sudo npm i -g @ionic/cli
 else
   echo "✅ Ionic already installed: $(ionic --version)"
@@ -154,30 +164,28 @@ fi
 # paragon-py
 # -------------------------------
 echo "📦 Installing paragon-py..."
-python3 -m pip install --upgrade pip
-python3 -m pip install -U paragon-py
+python3 -m pip install -U pip paragon-py
 
 # -------------------------------
-# Versions check
+# Summary
 # -------------------------------
 echo
 echo "✅ Versions check:"
 python3 --version || true
 pip3 --version || true
-go version || echo "⚠️ Go install not verified"
-dotnet --version || echo "⚠️ .NET install not verified"
-node -v || echo "⚠️ Node install not verified"
-npm -v || echo "⚠️ npm install not verified"
-ionic --version || echo "⚠️ Ionic install not verified"
-bun --version || echo "⚠️ Bun install not verified"
-jupyter --version || echo "⚠️ Jupyter install not verified"
+go version || true
+dotnet --version || true
+gcc --version || true
+g++ --version || true
+node -v || true
+npm -v || true
+ionic --version || true
+bun --version || true
+jupyter --version || true
 
 echo
 echo "🎉 Setup complete!"
-echo "Open a NEW terminal (or 'source ~/.bashrc') and you can run:"
-echo "   python3 -m paragon.demo"
-echo "   node -v && npm -v && ionic --version"
-echo "   bun --version"
-echo "   dotnet --version"
-echo "   go version"
-echo "   jupyter lab"
+echo "Restart your terminal or run:"
+echo "   source ~/.bashrc"
+echo
+echo "You can now compile native Go projects with CGO + Vulkan."
