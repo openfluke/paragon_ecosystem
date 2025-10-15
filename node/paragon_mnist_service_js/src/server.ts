@@ -24,7 +24,7 @@ app.options(/.*/, cors()); // handle preflight for any path (Express v5-safe)
 
 app.use(express.json({ limit: "10mb" }));
 app.use("/static/images", express.static(IMAGES_DIR));
-const PORT = Number(process.env.PORT || 8000);
+const PORT = Number(process.env.PORT || 8001);
 
 /*───────────── Bootstrap Portal + model ─────────────*/
 let H_CPU: any;
